@@ -58,7 +58,12 @@ class BenchmarkRunner:
         # Python
         py_path = self.root_dir / "python" / "sum_thread.py"
         start_time = time.time()
-        subprocess.run(["python", str(py_path), str(size), str(num_threads)], capture_output=True)
+        python_cmd = "python3"
+        py_result = subprocess.run(
+            [python_cmd, str(py_path), str(size), str(num_threads)], 
+            capture_output=True,
+            text=True
+        )
         py_time = time.time() - start_time
 
         return {
