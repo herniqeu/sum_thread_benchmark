@@ -15,8 +15,11 @@ import sys
 class BenchmarkRunner:
     def __init__(self):
         self.root_dir = Path(__file__).parent.parent
+        self.original_dir = os.getcwd()
         self.results = []
         self.system_info = self._get_system_info()
+        print(f"Initialized with root_dir: {self.root_dir}")
+        print(f"Current working directory: {self.original_dir}")
         
     def _get_system_info(self):
         """Collect system information"""
@@ -188,11 +191,41 @@ class BenchmarkRunner:
         hs_path = self.root_dir / "haskell" / "sum_thread.hs"
         output_path = hs_path.parent / "sum_thread"
         
+        # Verificação detalhada do arquivo
+        if not hs_path.exists():
+            print(f"Error: Haskell source file not found at {hs_path}")
+            print(f"Current working directory: {os.getcwd()}")
+            print(f"Root directory: {self.root_dir}")
+            print("Directory contents:")
+            for path in self.root_dir.glob("**/*"):
+                print(f"  {path}")
+            raise FileNotFoundError(f"Haskell source file not found: {hs_path}")
+        
         # Garantir que o diretório existe
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
         print(f"Compiling Haskell: {hs_path} -> {output_path}")
-        subprocess.run(["ghc", "-O2", "-threaded", str(hs_path), "-o", str(output_path)], check=True)
+        try:
+            # Mudar para o diretório do arquivo antes de compilar
+            os.chdir(hs_path.parent)
+            result = subprocess.run(
+                ["ghc", "-O2", "-threaded", str(hs_path.name), "-o", str(output_path)],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            print(f"GHC Output: {result.stdout}")
+            print(f"GHC Error: {result.stderr}")
+        except subprocess.CalledProcessError as e:
+            print(f"GHC compilation failed:")
+            print(f"Command: {e.cmd}")
+            print(f"Output: {e.output}")
+            print(f"Error: {e.stderr}")
+            raise
+        finally:
+            # Voltar ao diretório original
+            os.chdir(str(self.root_dir))
+        
         return output_path
 
     def plot_results(self):
@@ -236,10 +269,13 @@ class BenchmarkRunner:
             self.root_dir / "python" / "sum_thread.py"
         ]
         
+        print("\nChecking required files:")
         for file in required_files:
             if not file.exists():
+                print(f"ERROR: File not found: {file}")
+                print(f"Absolute path: {file.absolute()}")
                 raise FileNotFoundError(f"Required file not found: {file}")
-            print(f"Found: {file}")
+            print(f"Found: {file} (Size: {file.stat().st_size} bytes)")
 
 def main():
     runner = BenchmarkRunner()
