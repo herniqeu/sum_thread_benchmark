@@ -16,12 +16,12 @@ class BenchmarkRunner:
         """Compile C++ program"""
         cpp_path = self.root_dir / "cpp" / "sum_thread.cpp"
         output_path = self.root_dir / "cpp" / "sum_thread"
-        subprocess.run(["g++", "-O3", "-pthread", str(cpp_path), "-o", str(output_path)])
+        subprocess.run(["g++", "-std=c++17", "-O3", "-pthread", str(cpp_path), "-o", str(output_path)])
         return output_path
 
     def compile_go(self):
         """Compile Go program"""
-        go_path = self.root_dir / "go" / "_sum_thread.go"
+        go_path = self.root_dir / "go" / "sum_thread.go"
         output_path = self.root_dir / "go" / "sum_thread"
         subprocess.run(["go", "build", "-o", str(output_path), str(go_path)])
         return output_path
@@ -35,14 +35,16 @@ class BenchmarkRunner:
 
     def run_benchmark(self, size, num_threads):
         """Run benchmark for all languages with given parameters"""
-        # C++
+        # Compile first
         cpp_exec = self.compile_cpp()
+        go_exec = self.compile_go()
+
+        # C++
         start_time = time.time()
         subprocess.run([str(cpp_exec), str(size), str(num_threads)], capture_output=True)
         cpp_time = time.time() - start_time
 
         # Go
-        go_exec = self.compile_go()
         start_time = time.time()
         subprocess.run([str(go_exec), str(size), str(num_threads)], capture_output=True)
         go_time = time.time() - start_time
