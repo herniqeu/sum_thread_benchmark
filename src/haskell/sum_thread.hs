@@ -1,9 +1,8 @@
+module Main where
+
 import Control.Concurrent
-import Control.Concurrent.MVar
 import Control.Monad
 import Data.Time.Clock
-import System.Random
-import Text.Printf
 import System.Environment
 import System.Exit
 
@@ -43,15 +42,6 @@ splitIntoChunks :: Int -> [a] -> [[a]]
 splitIntoChunks _ [] = []
 splitIntoChunks n xs = take n xs : splitIntoChunks n (drop n xs)
 
--- Regular sum with timing
-regularSum :: [Int] -> IO (Int, Double)
-regularSum numbers = do
-    startTime <- getCurrentTime
-    let result = sum numbers
-    endTime <- getCurrentTime
-    let duration = realToFrac $ diffUTCTime endTime startTime
-    return (result, duration)
-
 main :: IO ()
 main = do
     args <- getArgs
@@ -59,3 +49,10 @@ main = do
         [size, threads] -> do
             let size' = read size :: Int
                 threads' = read threads :: Int
+            numbers <- return $ [1..size']
+            (sum', time) <- parallelSum numbers threads'
+            putStrLn $ "Parallel sum: " ++ show sum'
+            putStrLn $ "Time: " ++ show time
+        _ -> do
+            putStrLn "Usage: sum_thread <size> <threads>"
+            exitFailure

@@ -35,9 +35,10 @@ class BenchmarkRunner:
 
     def run_benchmark(self, size, num_threads):
         """Run benchmark for all languages with given parameters"""
-        # Compile first
+        # Compile all
         cpp_exec = self.compile_cpp()
         go_exec = self.compile_go()
+        hs_exec = self.compile_haskell()
 
         # C++
         start_time = time.time()
@@ -50,7 +51,6 @@ class BenchmarkRunner:
         go_time = time.time() - start_time
 
         # Haskell
-        hs_exec = self.compile_haskell()
         start_time = time.time()
         subprocess.run([str(hs_exec), str(size), str(num_threads)], capture_output=True)
         hs_time = time.time() - start_time
