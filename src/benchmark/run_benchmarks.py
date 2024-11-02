@@ -10,6 +10,7 @@ import psutil
 import platform
 from datetime import datetime
 from pathlib import Path
+import sys
 
 class BenchmarkRunner:
     def __init__(self):
@@ -44,36 +45,48 @@ class BenchmarkRunner:
 
     def run_single_test(self, executable, size, num_threads, lang):
         """Run a single test and collect metrics"""
-        start_time = time.time()
-        process = psutil.Popen(
-            [str(executable), str(size), str(num_threads)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        
-        # Collect metrics during execution
-        metrics_samples = []
-        while process.poll() is None:
-            metrics_samples.append(self._measure_process_metrics(process))
-            time.sleep(0.1)
+        try:
+            start_time = time.time()
             
-        stdout, stderr = process.communicate()
-        end_time = time.time()
-        
-        # Calculate average metrics
-        avg_metrics = {
-            k: np.mean([d[k] for d in metrics_samples if k in d])
-            for k in ["cpu_percent", "memory_percent", "memory_rss", "memory_vms", "threads"]
-        }
-        
-        return {
-            "language": lang,
-            "execution_time_ms": (end_time - start_time) * 1000,
-            "metrics": avg_metrics,
-            "stdout": stdout.decode(),
-            "stderr": stderr.decode(),
-            "exit_code": process.returncode,
-        }
+            if lang == "python":
+                cmd = [sys.executable, str(executable), str(size), str(num_threads)]
+            else:
+                cmd = [str(executable), str(size), str(num_threads)]
+                
+            print(f"Running {lang} test: {' '.join(map(str, cmd))}")
+            
+            process = psutil.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            
+            # Collect metrics during execution
+            metrics_samples = []
+            while process.poll() is None:
+                metrics_samples.append(self._measure_process_metrics(process))
+                time.sleep(0.1)
+                
+            stdout, stderr = process.communicate()
+            end_time = time.time()
+            
+            # Calculate average metrics
+            avg_metrics = {
+                k: np.mean([d[k] for d in metrics_samples if k in d])
+                for k in ["cpu_percent", "memory_percent", "memory_rss", "memory_vms", "threads"]
+            }
+            
+            return {
+                "language": lang,
+                "execution_time_ms": (end_time - start_time) * 1000,
+                "metrics": avg_metrics,
+                "stdout": stdout.decode(),
+                "stderr": stderr.decode(),
+                "exit_code": process.returncode,
+            }
+        except Exception as e:
+            print(f"Error running {lang} test: {e}")
+            return None
 
     def run_benchmark(self, size, num_threads):
         """Run benchmark for all languages with given parameters"""
@@ -100,6 +113,7 @@ class BenchmarkRunner:
 
     def run_all_benchmarks(self):
         """Run benchmarks with various parameters"""
+        self.check_files()  # Verificar arquivos antes de começar
         sizes = [
             1000,          
             10_000,        # 10K
@@ -146,22 +160,39 @@ class BenchmarkRunner:
     def compile_cpp(self):
         """Compile C++ program"""
         cpp_path = self.root_dir / "cpp" / "sum_thread.cpp"
-        output_path = self.root_dir / "cpp" / "sum_thread"
-        subprocess.run(["g++", "-std=c++17", "-O3", "-pthread", str(cpp_path), "-o", str(output_path)])
+        output_path = cpp_path.parent / "sum_thread"
+        
+        # Garantir que o diretório existe
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        print(f"Compiling C++: {cpp_path} -> {output_path}")
+        subprocess.run(["g++", "-std=c++17", "-O3", "-pthread", str(cpp_path), "-o", str(output_path)], check=True)
         return output_path
 
     def compile_go(self):
         """Compile Go program"""
         go_path = self.root_dir / "go" / "sum_thread.go"
-        output_path = self.root_dir / "go" / "sum_thread"
-        subprocess.run(["go", "build", "-o", str(output_path), str(go_path)])
+        output_path = go_path.parent / "sum_thread"
+        
+        # Garantir que o diretório existe
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        print(f"Compiling Go: {go_path} -> {output_path}")
+        # Mudar para o diretório do Go antes de compilar
+        os.chdir(go_path.parent)
+        subprocess.run(["go", "build", "-o", str(output_path), str(go_path.name)], check=True)
         return output_path
 
     def compile_haskell(self):
         """Compile Haskell program"""
         hs_path = self.root_dir / "haskell" / "sum_thread.hs"
-        output_path = self.root_dir / "haskell" / "sum_thread"
-        subprocess.run(["ghc", "-O2", "-threaded", str(hs_path), "-o", str(output_path)])
+        output_path = hs_path.parent / "sum_thread"
+        
+        # Garantir que o diretório existe
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        print(f"Compiling Haskell: {hs_path} -> {output_path}")
+        subprocess.run(["ghc", "-O2", "-threaded", str(hs_path), "-o", str(output_path)], check=True)
         return output_path
 
     def plot_results(self):
@@ -195,6 +226,20 @@ class BenchmarkRunner:
         plt.grid(True)
         plt.savefig('benchmark_by_threads.png')
         plt.close()
+
+    def check_files(self):
+        """Check if all required files exist"""
+        required_files = [
+            self.root_dir / "cpp" / "sum_thread.cpp",
+            self.root_dir / "go" / "sum_thread.go",
+            self.root_dir / "haskell" / "sum_thread.hs",
+            self.root_dir / "python" / "sum_thread.py"
+        ]
+        
+        for file in required_files:
+            if not file.exists():
+                raise FileNotFoundError(f"Required file not found: {file}")
+            print(f"Found: {file}")
 
 def main():
     runner = BenchmarkRunner()
