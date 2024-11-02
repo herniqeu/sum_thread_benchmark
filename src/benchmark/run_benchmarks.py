@@ -14,8 +14,8 @@ import sys
 
 class BenchmarkRunner:
     def __init__(self):
-        self.root_dir = Path(__file__).parent.parent
-        self.original_dir = os.getcwd()
+        self.root_dir = Path(__file__).parent.parent.absolute()  # Caminho absoluto
+        self.original_dir = Path.cwd().absolute()  # Caminho absoluto do diretório atual
         self.results = []
         self.system_info = self._get_system_info()
         print(f"Initialized with root_dir: {self.root_dir}")
@@ -174,39 +174,37 @@ class BenchmarkRunner:
 
     def compile_go(self):
         """Compile Go program"""
-        go_path = self.root_dir / "go" / "sum_thread.go"
-        output_path = go_path.parent / "sum_thread"
-        
-        # Garantir que o diretório existe
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        print(f"Compiling Go: {go_path} -> {output_path}")
-        # Mudar para o diretório do Go antes de compilar
-        os.chdir(go_path.parent)
-        subprocess.run(["go", "build", "-o", str(output_path), str(go_path.name)], check=True)
-        return output_path
+        try:
+            go_path = self.root_dir / "go" / "sum_thread.go"
+            output_path = go_path.parent / "sum_thread"
+            
+            # Garantir que o diretório existe
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            print(f"Compiling Go: {go_path} -> {output_path}")
+            # Mudar para o diretório do Go antes de compilar
+            os.chdir(go_path.parent)
+            subprocess.run(["go", "build", "-o", str(output_path), str(go_path.name)], check=True)
+            return output_path
+        finally:
+            os.chdir(str(self.original_dir))  # Sempre voltar ao diretório original
 
     def compile_haskell(self):
         """Compile Haskell program"""
-        hs_path = self.root_dir / "haskell" / "sum_thread.hs"
-        output_path = hs_path.parent / "sum_thread"
-        
-        # Verificação detalhada do arquivo
-        if not hs_path.exists():
-            print(f"Error: Haskell source file not found at {hs_path}")
-            print(f"Current working directory: {os.getcwd()}")
-            print(f"Root directory: {self.root_dir}")
-            print("Directory contents:")
-            for path in self.root_dir.glob("**/*"):
-                print(f"  {path}")
-            raise FileNotFoundError(f"Haskell source file not found: {hs_path}")
-        
-        # Garantir que o diretório existe
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        print(f"Compiling Haskell: {hs_path} -> {output_path}")
         try:
-            # Mudar para o diretório do arquivo antes de compilar
+            hs_path = self.root_dir / "haskell" / "sum_thread.hs"
+            output_path = hs_path.parent / "sum_thread"
+            
+            if not hs_path.exists():
+                print(f"Error: Haskell source file not found at {hs_path}")
+                print(f"Current working directory: {os.getcwd()}")
+                print(f"Root directory: {self.root_dir}")
+                print("Directory contents:")
+                for path in self.root_dir.glob("**/*"):
+                    print(f"  {path}")
+                raise FileNotFoundError(f"Haskell source file not found: {hs_path}")
+            
+            print(f"Compiling Haskell: {hs_path} -> {output_path}")
             os.chdir(hs_path.parent)
             result = subprocess.run(
                 ["ghc", "-O2", "-threaded", str(hs_path.name), "-o", str(output_path)],
@@ -216,17 +214,9 @@ class BenchmarkRunner:
             )
             print(f"GHC Output: {result.stdout}")
             print(f"GHC Error: {result.stderr}")
-        except subprocess.CalledProcessError as e:
-            print(f"GHC compilation failed:")
-            print(f"Command: {e.cmd}")
-            print(f"Output: {e.output}")
-            print(f"Error: {e.stderr}")
-            raise
+            return output_path
         finally:
-            # Voltar ao diretório original
-            os.chdir(str(self.root_dir))
-        
-        return output_path
+            os.chdir(str(self.original_dir))  # Sempre voltar ao diretório original
 
     def plot_results(self):
         """Generate plots from benchmark results"""
