@@ -14,12 +14,13 @@ import sys
 
 class BenchmarkRunner:
     def __init__(self):
-        self.root_dir = Path(__file__).parent.parent.absolute()  # Caminho absoluto
-        self.original_dir = Path.cwd().absolute()  # Caminho absoluto do diretório atual
+        self.root_dir = (Path(__file__).parent.parent).resolve()
+        self.original_dir = Path.cwd().resolve()
         self.results = []
         self.system_info = self._get_system_info()
         print(f"Initialized with root_dir: {self.root_dir}")
         print(f"Current working directory: {self.original_dir}")
+        print(f"Absolute path to Haskell file: {self.root_dir / 'haskell' / 'sum_thread.hs'}")
         
     def _get_system_info(self):
         """Collect system information"""
@@ -192,15 +193,15 @@ class BenchmarkRunner:
     def compile_haskell(self):
         """Compile Haskell program"""
         try:
-            hs_path = self.root_dir / "haskell" / "sum_thread.hs"
-            output_path = hs_path.parent / "sum_thread"
+            hs_path = (self.root_dir / "haskell" / "sum_thread.hs").resolve()
+            output_path = (hs_path.parent / "sum_thread").resolve()
             
             if not hs_path.exists():
                 print(f"Error: Haskell source file not found at {hs_path}")
                 print(f"Current working directory: {os.getcwd()}")
                 print(f"Root directory: {self.root_dir}")
                 print("Directory contents:")
-                for path in self.root_dir.glob("**/*"):
+                for path in Path(self.root_dir).rglob("*"):
                     print(f"  {path}")
                 raise FileNotFoundError(f"Haskell source file not found: {hs_path}")
             
@@ -216,7 +217,7 @@ class BenchmarkRunner:
             print(f"GHC Error: {result.stderr}")
             return output_path
         finally:
-            os.chdir(str(self.original_dir))  # Sempre voltar ao diretório original
+            os.chdir(str(self.original_dir))
 
     def plot_results(self):
         """Generate plots from benchmark results"""
