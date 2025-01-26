@@ -1,5 +1,7 @@
 # Multi-Language Parallel Sum Benchmark Suite
 
+![Log Execution Time vs Input Size](/img/log_execution_time_vs_input_size.png)
+
 ## Technical Overview
 
 This repository implements a parallel sum algorithm across multiple programming languages (C++, Go, Haskell, and Python), demonstrating various parallel programming paradigms and their performance characteristics in a controlled environment.
